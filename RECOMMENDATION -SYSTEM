@@ -1,0 +1,36 @@
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.sparse import csr_matrix
+
+def create_recommendation_system(data, user_id, top_n=5):
+    # Create user-item matrix
+    user_item_matrix = data.pivot(index='user_id', columns='item_id', values='rating').fillna(0)
+    
+    # Convert to sparse matrix
+    user_item_sparse = csr_matrix(user_item_matrix.values)
+    
+    # Compute cosine similarity between users
+    user_similarity = cosine_similarity(user_item_sparse)
+    
+    # Convert similarity matrix to DataFrame
+    user_sim_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
+    
+    # Find similar users
+    similar_users = user_sim_df[user_id].sort_values(ascending=False).index[1:top_n+1]
+    
+    # Get recommendations based on similar users' preferences
+    recommended_items = data[data['user_id'].isin(similar_users)].groupby('item_id')['rating'].mean().sort_values(ascending=False).index[:top_n]
+    
+    return recommended_items.tolist()
+
+# Example dataset
+data = pd.DataFrame({
+    'user_id': [1, 1, 1, 2, 2, 2, 3, 3, 3],
+    'item_id': [101, 102, 103, 101, 104, 105, 102, 104, 106],
+    'rating': [5, 4, 3, 4, 5, 2, 5, 4, 3]
+})
+
+# Get recommendations for user 1
+recommendations = create_recommendation_system(data, user_id=1)
+print("Recommended items:", recommendations)
